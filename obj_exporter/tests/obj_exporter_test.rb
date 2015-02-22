@@ -93,6 +93,8 @@ class ObjExporterTest < MiniTest::Test
     FileUtils.mkdir_p(run_dir)
     Dir.chdir(run_dir)
     
+    model.save("example_model.osm", true)
+    
     # run the measure
     measure.run(model, runner, argument_map)
     result = runner.result

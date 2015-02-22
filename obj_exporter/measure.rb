@@ -26,6 +26,10 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     return args
   end
   
+  def cleanName(name)
+    return name.gsub(' ', '_')
+  end
+  
   def getVertexIndex(vertex, allVertices, tol = 0.001)
     allVertices.each_index do |i|
       if OpenStudio::getDistance(vertex, allVertices[i]) < tol
@@ -53,9 +57,13 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     allVertices = []
     objVertices = ""
     objFaces = ""
+    allSurfaceNames = []
 
     model.getSurfaces.each do |surface|
 
+      surfaceName = cleanName(surface.name.get)
+      allSurfaceNames << surfaceName
+      
       surfaceVertices = surface.vertices
       t = OpenStudio::Transformation::alignFace(surfaceVertices)
       r = t.rotationMatrix
@@ -79,7 +87,8 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
         runner.registerWarning("Failed to triangulate surface #{surface.name} with #{subSurfaces.size} sub surfaces")
       end
       
-      objFaces += "#Surface #{surface.name}\n"
+      objFaces += "#Surface #{surfaceName}\n"
+      objFaces += "  usemtl #{surfaceName}\n"
       triangles.each do |vertices|
         vertices = siteTransformation*t*vertices
         normal = siteTransformation.rotationMatrix*r*z
@@ -89,15 +98,19 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
           indices << getVertexIndex(vertex, allVertices)
         end
         
-        objFaces += "f #{indices.join(' ')}\n"
+        objFaces += "  f #{indices.join(' ')}\n"
       end
       
       subSurfaces.each do |subSurface|
+      
+        subSurfaceName = cleanName(subSurface.name.get)
+        allSurfaceNames << subSurfaceName
      
         subSurfaceVertices = tInv*subSurface.vertices
         triangles = OpenStudio::computeTriangulation(subSurfaceVertices, OpenStudio::Point3dVectorVector.new)
 
-        objFaces += "#SubSurface #{subSurface.name}\n"
+        objFaces += "#SubSurface #{subSurfaceName}\n"
+        objFaces += "  usemtl #{subSurfaceName}\n"
         triangles.each do |vertices|
           vertices = siteTransformation*t*vertices
           normal = siteTransformation.rotationMatrix*r*z
@@ -107,7 +120,7 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
             indices << getVertexIndex(vertex, allVertices)  
           end    
           
-          objFaces += "f #{indices.join(' ')}\n"
+          objFaces += "  f #{indices.join(' ')}\n"
         end
       end
     end
@@ -122,9 +135,13 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     File.open(obj_out_path, 'w') do |file|
 
       file << "# OpenStudio OBJ Export\n"
+      file << "mtllib output.mtl\n\n"
+      file << "# Vertices\n"
       allVertices.each do |v|
         file << "v #{v.x} #{v.z} #{-v.y}\n"
       end
+      file << "\n"
+      file << "# Faces\n"
       file << objFaces
       
       # make sure data is written to the disk one way or the other      
@@ -134,7 +151,29 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
         file.flush
       end
     end
+    
+    # write material file
+    mtl_out_path = "./output.mtl"
+    File.open(mtl_out_path, 'w') do |file|
 
+      file << "# OpenStudio MTL Export\n"
+      allSurfaceNames.each do |surfaceName|
+        file << "newmtl #{surfaceName}\n"
+        file << "  Ka 1.000 0.000 0.000\n"
+        file << "  Kd 1.000 0.000 0.000\n"
+        file << "  Ks 1.000 0.000 0.000\n"
+        file << "  Ns 0.0\n"
+        file << "  d 0.5\n" # some implementations use 'd' others use 'Tr'
+      end
+
+      # make sure data is written to the disk one way or the other      
+      begin
+        file.fsync
+      rescue
+        file.flush
+      end
+    end
+    
     # report final condition of model
     runner.registerFinalCondition("The building finished with #{model.getSpaces.size} spaces.")
 
