@@ -26,8 +26,9 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     return args
   end
   
-  def cleanName(name)
-    return name.gsub(' ', '_')
+  def getSurfaceID(surface)
+    result = "#{surface.iddObject.name}-#{surface.name}-#{surface.handle}"
+    return result.gsub(' ', '_').gsub(':', '_').gsub('{', '').gsub('}', '')
   end
   
   def getVertexIndex(vertex, allVertices, tol = 0.001)
@@ -57,12 +58,16 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     allVertices = []
     objVertices = ""
     objFaces = ""
-    allSurfaceNames = []
+    allSurfaceIDs = []
 
-    model.getSurfaces.each do |surface|
+    # all planar surfaces
+    model.getPlanarSurfaces.each do |surface|
 
-      surfaceName = cleanName(surface.name.get)
-      allSurfaceNames << surfaceName
+      # handle sub surfaces later
+      next if !surface.to_SubSurface.empty?
+    
+      surfaceID = getSurfaceID(surface)
+      allSurfaceIDs << surfaceID
       
       surfaceVertices = surface.vertices
       t = OpenStudio::Transformation::alignFace(surfaceVertices)
@@ -76,19 +81,22 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
       end
       
       surfaceVertices = tInv*surfaceVertices
+      
+      subSurfaces = []
       subSurfaceVertices = OpenStudio::Point3dVectorVector.new
-      subSurfaces = surface.subSurfaces
-      subSurfaces.each do |subSurface|
-        subSurfaceVertices << tInv*subSurface.vertices
+      if !surface.to_Surface.empty?
+        subSurfaces = surface.to_Surface.get.subSurfaces
+        subSurfaces.each do |subSurface|
+          subSurfaceVertices << tInv*subSurface.vertices
+        end
       end
 
       triangles = OpenStudio::computeTriangulation(surfaceVertices, subSurfaceVertices)
       if triangles.empty?
-        runner.registerWarning("Failed to triangulate surface #{surface.name} with #{subSurfaces.size} sub surfaces")
+        runner.registerWarning("Failed to triangulate #{surface.iddObject.name} #{surface.name} with #{subSurfaces.size} sub surfaces")
       end
       
-      objFaces += "#Surface #{surfaceName}\n"
-      objFaces += "  usemtl #{surfaceName}\n"
+      objFaces += "##{surfaceID}\n"
       triangles.each do |vertices|
         vertices = siteTransformation*t*vertices
         normal = siteTransformation.rotationMatrix*r*z
@@ -98,19 +106,20 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
           indices << getVertexIndex(vertex, allVertices)
         end
         
+        objFaces += "  usemtl #{surfaceID}\n"
         objFaces += "  f #{indices.join(' ')}\n"
       end
       
+      # now do subSurfaces
       subSurfaces.each do |subSurface|
       
-        subSurfaceName = cleanName(subSurface.name.get)
-        allSurfaceNames << subSurfaceName
+        subSurfaceID = getSurfaceID(subSurface)
+        allSurfaceIDs << subSurfaceID
      
         subSurfaceVertices = tInv*subSurface.vertices
         triangles = OpenStudio::computeTriangulation(subSurfaceVertices, OpenStudio::Point3dVectorVector.new)
 
-        objFaces += "#SubSurface #{subSurfaceName}\n"
-        objFaces += "  usemtl #{subSurfaceName}\n"
+        objFaces += "##{subSurfaceID}\n"
         triangles.each do |vertices|
           vertices = siteTransformation*t*vertices
           normal = siteTransformation.rotationMatrix*r*z
@@ -119,12 +128,12 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
           vertices.each do |vertex|
             indices << getVertexIndex(vertex, allVertices)  
           end    
-          
+          objFaces += "  usemtl #{subSurfaceID}\n"
           objFaces += "  f #{indices.join(' ')}\n"
         end
       end
     end
-    
+   
     if objFaces.empty?
       runner.registerError("Model is empty, no output will be written")
       return false
@@ -157,8 +166,8 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     File.open(mtl_out_path, 'w') do |file|
 
       file << "# OpenStudio MTL Export\n"
-      allSurfaceNames.each do |surfaceName|
-        file << "newmtl #{surfaceName}\n"
+      allSurfaceIDs.each do |surfaceID|
+        file << "newmtl #{surfaceID}\n"
         file << "  Ka 1.000 0.000 0.000\n"
         file << "  Kd 1.000 0.000 0.000\n"
         file << "  Ks 1.000 0.000 0.000\n"
