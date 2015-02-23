@@ -2,11 +2,11 @@
   <schema_version>3.0</schema_version>
   <name>obj_exporter</name>
   <uid>cb9bde0a-3b21-486b-b451-2455d2539ccc</uid>
-  <version_id>c79f1991-5966-435e-b6ae-3753d9fc36ff</version_id>
+  <version_id>61e4bf1d-dedd-4282-a910-41b78d3ac1b6</version_id>
   <xml_checksum>38BE1377</xml_checksum>
   <class_name>ObjExporter</class_name>
   <display_name>Obj Exporter</display_name>
-  <description>Exports the OpenStudio model in Wavefront OBJ format for viewing in common 3D engines.</description>
+  <description>Exports the OpenStudio model in Wavefront OBJ format for viewing in common 3D engines.  One free viewer is available at http://www.open3mod.com/.</description>
   <modeler_description>d</modeler_description>
   <arguments/>
   <provenances/>
@@ -55,13 +55,13 @@
       <filename>measure.rb</filename>
       <filetype>rb</filetype>
       <usage_type>script</usage_type>
-      <checksum>ABF5B094</checksum>
+      <checksum>3708A59A</checksum>
     </file>
     <file>
       <filename>obj_exporter_test.rb</filename>
       <filetype>rb</filetype>
       <usage_type>test</usage_type>
-      <checksum>3C8593E6</checksum>
+      <checksum>BEED38DC</checksum>
     </file>
   </files>
 </measure>
