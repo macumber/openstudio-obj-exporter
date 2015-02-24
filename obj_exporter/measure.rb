@@ -184,14 +184,14 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
         siteTransformation = planarSurfaceGroup.get.siteTransformation
       end
       
-      surfaceVertices = tInv*surfaceVertices
+      surfaceVertices = OpenStudio::reverse(tInv*surfaceVertices)
       
       subSurfaces = []
       subSurfaceVertices = OpenStudio::Point3dVectorVector.new
       if !surface.to_Surface.empty?
         subSurfaces = surface.to_Surface.get.subSurfaces
         subSurfaces.each do |subSurface|
-          subSurfaceVertices << tInv*subSurface.vertices
+          subSurfaceVertices << OpenStudio::reverse(tInv*subSurface.vertices)
         end
       end
 
@@ -222,7 +222,7 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
         subSurfaceID = getSurfaceID(subSurface)
         allMaterials << getMaterial(subSurface)
         
-        subSurfaceVertices = tInv*subSurface.vertices
+        subSurfaceVertices = OpenStudio::reverse(tInv*subSurface.vertices)
         triangles = OpenStudio::computeTriangulation(subSurfaceVertices, OpenStudio::Point3dVectorVector.new)
 
         objFaces += "##{subSurface.name}\n"
