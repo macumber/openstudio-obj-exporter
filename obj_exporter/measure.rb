@@ -39,6 +39,29 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     surface_type_color = [255, 255, 255, 1.0]
     boundary_color = [255, 255, 255, 1.0]
     
+    space = nil
+    thermal_zone = nil
+    building_story = nil
+    space_type = nil
+    if surface.space.is_initialized
+      space = surface.space.get
+      thermal_zone = space.thermalZone.get if space.thermalZone.is_initialized
+      building_story = space.buildingStory.get if space.buildingStory.is_initialized  
+      space_type = space.spaceType.get if space.spaceType.is_initialized  
+      
+      if thermal_zone && !thermal_zone.renderingColor.is_initialized
+        thermal_zone.setRenderingColor(OpenStudio::Model::RenderingColor.new(surface.model))
+      end
+      
+      if building_story && !building_story.renderingColor.is_initialized
+        building_story.setRenderingColor(OpenStudio::Model::RenderingColor.new(surface.model))
+      end
+      
+      if space_type && !space_type.renderingColor.is_initialized
+        space_type.setRenderingColor(OpenStudio::Model::RenderingColor.new(surface.model))
+      end      
+    end
+      
     if surface.to_Surface.is_initialized
     
       surfaceType = surface.to_Surface.get.surfaceType
@@ -131,7 +154,11 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
 
     result[:surface_type_color] = surface_type_color
     result[:boundary_color] = boundary_color
-    
+    result[:space] = space
+    result[:thermal_zone] = thermal_zone
+    result[:building_story] = building_story
+    result[:space_type] = space_type
+
     return result
   end
   
@@ -253,7 +280,11 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
 
       file << "# OpenStudio OBJ Export\n\n"
       file << "mtllib surface_type.mtl\n"
-      file << "#mtllib boundary_color.mtl\n\n"
+      file << "#mtllib boundary_color.mtl\n"
+      file << "#mtllib thermal_zone.mtl\n"
+      file << "#mtllib building_story.mtl\n"
+      file << "#mtllib space_type.mtl\n"
+      file << "\n"
       file << "# Vertices\n"
       allVertices.each do |v|
         file << "v #{v.x} #{v.z} #{-v.y}\n"
@@ -274,7 +305,7 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     mtl_out_path = "./surface_type.mtl"
     File.open(mtl_out_path, 'w') do |file|
 
-      file << "# OpenStudio Surface Type MTL Export\n"
+      file << "# OpenStudio Surface Type MTL Export\n\n"
       allMaterials.each do |material|
         r = material[:surface_type_color][0]/255.to_f
         g = material[:surface_type_color][1]/255.to_f
@@ -299,12 +330,120 @@ class ObjExporter < OpenStudio::Ruleset::ModelUserScript
     mtl_out_path = "./boundary_color.mtl"
     File.open(mtl_out_path, 'w') do |file|
 
-      file << "# OpenStudio Surface Type MTL Export\n"
+      file << "# OpenStudio Boundary Condition MTL Export\n\n"
       allMaterials.each do |material|
         r = material[:boundary_color][0]/255.to_f
         g = material[:boundary_color][1]/255.to_f
         b = material[:boundary_color][2]/255.to_f
         a = material[:boundary_color][3]
+        file << "newmtl #{material[:surfaceID]}\n"
+        file << "  Ka #{r} #{g} #{b}\n"
+        file << "  Kd #{r} #{g} #{b}\n"
+        file << "  Ks #{r} #{g} #{b}\n"
+        file << "  Ns 0.0\n"
+        file << "  d #{a}\n" # some implementations use 'd' others use 'Tr'
+      end
+
+      # make sure data is written to the disk one way or the other      
+      begin
+        file.fsync
+      rescue
+        file.flush
+      end
+    end
+    
+    mtl_out_path = "./thermal_zone.mtl"
+    File.open(mtl_out_path, 'w') do |file|
+
+      file << "# OpenStudio Thermal Zone MTL Export\n\n"
+      allMaterials.each do |material|
+
+        r = 1
+        g = 1
+        b = 1
+        a = 1
+        
+        thermal_zone = material[:thermal_zone]
+        if thermal_zone && thermal_zone.renderingColor.is_initialized
+          r = thermal_zone.renderingColor.get.renderingRedValue/255.to_f
+          g = thermal_zone.renderingColor.get.renderingGreenValue/255.to_f
+          b = thermal_zone.renderingColor.get.renderingBlueValue/255.to_f
+          a = thermal_zone.renderingColor.get.renderingAlphaValue/255.to_f
+        end
+
+        file << "##{thermal_zone.name}\n" if thermal_zone
+        file << "newmtl #{material[:surfaceID]}\n"
+        file << "  Ka #{r} #{g} #{b}\n"
+        file << "  Kd #{r} #{g} #{b}\n"
+        file << "  Ks #{r} #{g} #{b}\n"
+        file << "  Ns 0.0\n"
+        file << "  d #{a}\n" # some implementations use 'd' others use 'Tr'
+      end
+
+      # make sure data is written to the disk one way or the other      
+      begin
+        file.fsync
+      rescue
+        file.flush
+      end
+    end
+    
+    mtl_out_path = "./building_story.mtl"
+    File.open(mtl_out_path, 'w') do |file|
+
+      file << "# OpenStudio Building Story MTL Export\n\n"
+      allMaterials.each do |material|
+
+        r = 1
+        g = 1
+        b = 1
+        a = 1
+        
+        building_story = material[:building_story]
+        if building_story && building_story.renderingColor.is_initialized
+          r = building_story.renderingColor.get.renderingRedValue/255.to_f
+          g = building_story.renderingColor.get.renderingGreenValue/255.to_f
+          b = building_story.renderingColor.get.renderingBlueValue/255.to_f
+          a = building_story.renderingColor.get.renderingAlphaValue/255.to_f
+        end
+
+        file << "##{building_story.name}\n" if building_story
+        file << "newmtl #{material[:surfaceID]}\n"
+        file << "  Ka #{r} #{g} #{b}\n"
+        file << "  Kd #{r} #{g} #{b}\n"
+        file << "  Ks #{r} #{g} #{b}\n"
+        file << "  Ns 0.0\n"
+        file << "  d #{a}\n" # some implementations use 'd' others use 'Tr'
+      end
+
+      # make sure data is written to the disk one way or the other      
+      begin
+        file.fsync
+      rescue
+        file.flush
+      end
+    end
+    
+    mtl_out_path = "./space_type.mtl"
+    File.open(mtl_out_path, 'w') do |file|
+
+      file << "# OpenStudio Space Type MTL Export\n\n"
+      allMaterials.each do |material|
+
+        r = 1
+        g = 1
+        b = 1
+        a = 1
+        
+        space_type = material[:space_type]
+        if space_type && space_type.renderingColor.is_initialized
+          r = space_type.renderingColor.get.renderingRedValue/255.to_f
+          g = space_type.renderingColor.get.renderingGreenValue/255.to_f
+          b = space_type.renderingColor.get.renderingBlueValue/255.to_f
+          a = space_type.renderingColor.get.renderingAlphaValue/255.to_f
+        end
+
+        file << "##{space_type.name}\n" if space_type
         file << "newmtl #{material[:surfaceID]}\n"
         file << "  Ka #{r} #{g} #{b}\n"
         file << "  Kd #{r} #{g} #{b}\n"

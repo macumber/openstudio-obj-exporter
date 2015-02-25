@@ -2,7 +2,7 @@
   <schema_version>3.0</schema_version>
   <name>obj_exporter</name>
   <uid>cb9bde0a-3b21-486b-b451-2455d2539ccc</uid>
-  <version_id>61e4bf1d-dedd-4282-a910-41b78d3ac1b6</version_id>
+  <version_id>136bfd2d-086b-4c95-aa87-08bf49e75039</version_id>
   <xml_checksum>38BE1377</xml_checksum>
   <class_name>ObjExporter</class_name>
   <display_name>Obj Exporter</display_name>
@@ -47,6 +47,12 @@
   </attributes>
   <files>
     <file>
+      <filename>obj_exporter_test.rb</filename>
+      <filetype>rb</filetype>
+      <usage_type>test</usage_type>
+      <checksum>BEED38DC</checksum>
+    </file>
+    <file>
       <version>
         <software_program>OpenStudio</software_program>
         <identifier>1.6.3</identifier>
@@ -55,13 +61,7 @@
       <filename>measure.rb</filename>
       <filetype>rb</filetype>
       <usage_type>script</usage_type>
-      <checksum>3708A59A</checksum>
-    </file>
-    <file>
-      <filename>obj_exporter_test.rb</filename>
-      <filetype>rb</filetype>
-      <usage_type>test</usage_type>
-      <checksum>BEED38DC</checksum>
+      <checksum>6F2DBA19</checksum>
     </file>
   </files>
 </measure>
